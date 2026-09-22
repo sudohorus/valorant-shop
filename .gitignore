@@ -1,0 +1,5 @@
+.riot-browser-profile/
+.riot-session.json
+.venv/
+__pycache__/
+*.pyc
