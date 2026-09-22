@@ -92,6 +92,26 @@ async function expectOk(response, what) {
 
   const body = await response.text();
 
+  // A Riot devolve errorCode em JSON nas falhas conhecidas.
+  let code = null;
+
+  try {
+    code = JSON.parse(body).errorCode;
+  } catch {
+    // Corpo vazio ou HTML: segue com a mensagem genérica.
+  }
+
+  if (code === 'SCHEDULED_DOWNTIME') {
+    throw new Error(
+      'O VALORANT está em manutenção no seu servidor. ' +
+        'A loja volta quando a Riot religar os serviços.'
+    );
+  }
+
+  if (code === 'BAD_CLAIMS' || response.status === 401) {
+    throw new Error('Sua sessão expirou. Entre de novo.');
+  }
+
   throw new Error(
     `${what} falhou (HTTP ${response.status}).` +
       (body ? `\n${body.slice(0, 300)}` : '')
