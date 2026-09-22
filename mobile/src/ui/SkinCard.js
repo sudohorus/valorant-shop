@@ -1,6 +1,6 @@
 import { Image, StyleSheet, Text, View } from 'react-native';
 
-import { theme } from './theme';
+import { theme } from '../theme';
 
 export function SkinCard({ skin }) {
   return (

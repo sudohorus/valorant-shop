@@ -2,16 +2,17 @@ import { useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-import { AUTH_URL, parseAuthRedirect } from './api';
+import { AUTH_URL, parseAuthRedirect } from './riot';
+import { theme } from './theme';
 
 /**
  * WebView do login oficial da Riot.
  *
- * Enquanto `hidden`, tentamos reaproveitar a sessão que já
- * está nos cookies do WebView — se a Riot pedir login, o
- * pai mostra a janela.
+ * Com `hidden`, roda escondido só para ver se os cookies do
+ * WebView ainda valem; se a Riot pedir login de novo, avisa o
+ * pai por `onNeedsLogin` em vez de aparecer sozinho.
  */
-export function RiotLogin({ hidden, onTokens, onNeedsLogin }) {
+export function RiotLogin({ hidden = false, onTokens, onNeedsLogin }) {
   const done = useRef(false);
 
   function inspect(url) {
@@ -29,8 +30,7 @@ export function RiotLogin({ hidden, onTokens, onNeedsLogin }) {
       return;
     }
 
-    // Caiu na tela de login: a sessão salva não serve mais.
-    if (hidden && url.includes('auth.riotgames.com')) {
+    if (hidden && url.includes('auth.riotgames.com') && onNeedsLogin) {
       onNeedsLogin();
     }
   }
@@ -39,7 +39,6 @@ export function RiotLogin({ hidden, onTokens, onNeedsLogin }) {
     <View style={hidden ? styles.hidden : styles.visible}>
       <WebView
         source={{ uri: AUTH_URL }}
-        incognito={false}
         sharedCookiesEnabled
         thirdPartyCookiesEnabled
         domStorageEnabled
@@ -67,6 +66,6 @@ const styles = StyleSheet.create({
   },
   web: {
     flex: 1,
-    backgroundColor: '#0B0B0D',
+    backgroundColor: theme.bg,
   },
 });
