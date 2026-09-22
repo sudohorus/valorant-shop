@@ -5,11 +5,11 @@ import {
   Pressable,
   RefreshControl,
   SafeAreaView,
+  StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 
 import { fetchDailyShop, formatCountdown } from './src/api';
 import { RiotLogin } from './src/RiotLogin';
@@ -57,7 +57,7 @@ export default function App() {
   if (stage === 'silent' || stage === 'login') {
     return (
       <SafeAreaView style={styles.screen}>
-        <StatusBar style="light" />
+        <StatusBar barStyle="light-content" backgroundColor={theme.bg} />
 
         {stage === 'silent' && (
           <Centered label="Entrando com a sessão salva..." />
@@ -75,7 +75,7 @@ export default function App() {
   if (stage === 'loading') {
     return (
       <SafeAreaView style={styles.screen}>
-        <StatusBar style="light" />
+        <StatusBar barStyle="light-content" backgroundColor={theme.bg} />
         <Centered label="Carregando sua loja..." />
       </SafeAreaView>
     );
@@ -84,7 +84,7 @@ export default function App() {
   if (stage === 'error') {
     return (
       <SafeAreaView style={styles.screen}>
-        <StatusBar style="light" />
+        <StatusBar barStyle="light-content" backgroundColor={theme.bg} />
 
         <View style={styles.centerBox}>
           <Text style={styles.errorTitle}>Não deu certo</Text>
@@ -106,7 +106,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <StatusBar style="light" />
+      <StatusBar barStyle="light-content" backgroundColor={theme.bg} />
 
       <FlatList
         data={shop.offers}
