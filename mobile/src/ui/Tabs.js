@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { theme } from '../theme';
 
@@ -9,8 +10,16 @@ import { theme } from '../theme';
  * biblioteca de navegação por enquanto.
  */
 export function Tabs({ tabs, active, onChange }) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.bar}>
+    <View
+      style={[
+        styles.bar,
+        // Android desenha por baixo da barra de navegação.
+        { paddingBottom: Math.max(insets.bottom, 12) },
+      ]}
+    >
       {tabs.map((tab) => {
         const selected = tab.key === active;
 
@@ -39,7 +48,6 @@ const styles = StyleSheet.create({
     borderTopColor: theme.border,
     backgroundColor: theme.surface,
     paddingTop: 12,
-    paddingBottom: 18,
   },
   tab: {
     flex: 1,

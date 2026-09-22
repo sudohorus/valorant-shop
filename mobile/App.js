@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { SafeAreaView, StatusBar, StyleSheet, View } from 'react-native';
+import { StatusBar, StyleSheet, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from './src/auth';
 import { RiotLogin } from './src/RiotLogin';
@@ -70,13 +71,16 @@ function Root() {
 
 export default function App() {
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={theme.bg} />
+    <SafeAreaProvider>
+      {/* A barra de abas cuida do inset de baixo sozinha. */}
+      <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="light-content" backgroundColor={theme.bg} />
 
-      <AuthProvider>
-        <Root />
-      </AuthProvider>
-    </SafeAreaView>
+        <AuthProvider>
+          <Root />
+        </AuthProvider>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
