@@ -86,6 +86,8 @@ export function SkinPreviewScreen({ skinId, extra, onClose }) {
   const [chromaIndex, setChromaIndex] = useState(0);
   // Qual vídeo está tocando: { kind: 'level' | 'chroma', index }.
   const [selected, setSelected] = useState(null);
+  // Último nível escolhido, para voltar nele ao sair de uma variante.
+  const [levelIndex, setLevelIndex] = useState(0);
 
   const skin = data?.skin;
 
@@ -99,6 +101,7 @@ export function SkinPreviewScreen({ skinId, extra, onClose }) {
 
     const first = skin.levels.findIndex((level) => level.video);
 
+    setLevelIndex(first >= 0 ? first : 0);
     setSelected(first >= 0 ? { kind: 'level', index: first } : null);
   }, [skin]);
 
@@ -164,10 +167,26 @@ export function SkinPreviewScreen({ skinId, extra, onClose }) {
   function pickChroma(index) {
     setChromaIndex(index);
 
-    // Variante com vídeo próprio já troca o player.
+    // Variante com vídeo próprio toca o dela.
     if (index > 0 && skin.chromas[index]?.video) {
       setSelected({ kind: 'chroma', index });
+
+      return;
     }
+
+    // Voltando para a cor padrão (ou variante sem vídeo), o player tem
+    // de voltar para o nível escolhido — antes continuava preso no
+    // vídeo da variante anterior.
+    setSelected(skin.levels[levelIndex]?.video ? { kind: 'level', index: levelIndex } : null);
+  }
+
+  function pickLevel(index) {
+    setLevelIndex(index);
+
+    // Nível é sempre na cor padrão: senão a arte ficava de uma cor e o
+    // vídeo de outra.
+    setChromaIndex(0);
+    setSelected({ kind: 'level', index });
   }
 
   return (
@@ -255,7 +274,7 @@ export function SkinPreviewScreen({ skinId, extra, onClose }) {
                   <Pressable
                     key={level.id}
                     disabled={!level.video}
-                    onPress={() => setSelected({ kind: 'level', index })}
+                    onPress={() => pickLevel(index)}
                     style={({ pressed }) => [
                       styles.level,
                       active && styles.levelActive,
