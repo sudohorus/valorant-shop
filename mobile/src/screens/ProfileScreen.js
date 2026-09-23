@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Constants from 'expo-constants';
 
 import { Image } from '../ui/Img';
 import { agents, competitiveTiers, playerCards, playerTitles } from '../content';
@@ -394,6 +395,8 @@ export function ProfileScreen() {
         <View style={styles.card}>
           <Row label={t('profile.server')} value={data.shard} />
           <Row label="PUUID" value={`${data.puuid.slice(0, 8)}...`} />
+          {/* Vem do app.json; o build do GitHub põe 1.0.<nº do build>. */}
+          <Row label={t('profile.version')} value={Constants.expoConfig?.version || '—'} />
         </View>
 
         <View style={styles.section}>

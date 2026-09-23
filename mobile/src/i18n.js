@@ -192,6 +192,7 @@ const STRINGS = {
     'bp.complete': 'Passe completo',
     'bp.epilogue': 'Epílogo',
     'what.contracts': 'Seu passe de batalha',
+    'profile.version': 'Versão',
   },
 
   'en-US': {
@@ -368,6 +369,7 @@ const STRINGS = {
     'bp.complete': 'Pass complete',
     'bp.epilogue': 'Epilogue',
     'what.contracts': 'Your battle pass',
+    'profile.version': 'Version',
   },
 
   'es-ES': {
@@ -544,6 +546,7 @@ const STRINGS = {
     'bp.complete': 'Pase completo',
     'bp.epilogue': 'Epílogo',
     'what.contracts': 'Tu pase de batalla',
+    'profile.version': 'Versión',
   },
 };
 

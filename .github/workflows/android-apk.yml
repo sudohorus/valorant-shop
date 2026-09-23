@@ -36,7 +36,10 @@ jobs:
         working-directory: mobile
 
     steps:
+      # Histórico completo + tags: as notas da release comparam com o APK anterior.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -53,6 +56,20 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - run: npm ci
+
+      # 1.0.<número do build>; o versionCode crescente é o que o Android
+      # usa para aceitar a instalação por cima como atualização.
+      - name: Versão do app
+        env:
+          RUN: ${{ github.run_number }}
+        run: |
+          node -e "
+            const fs = require('fs');
+            const config = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+            config.expo.version = '1.0.' + process.env.RUN;
+            config.expo.android = { ...config.expo.android, versionCode: Number(process.env.RUN) };
+            fs.writeFileSync('app.json', JSON.stringify(config, null, 2));
+          "
 
       # Gera a pasta android/ a partir do app.json (plugins inclusos).
       - run: npx expo prebuild --platform android --clean --no-install
@@ -84,11 +101,52 @@ jobs:
           path: mobile/valorant-shop.apk
           retention-days: 30
 
+      # Changelog a partir dos commits desde o APK anterior, agrupado pelo
+      # tipo do commit (feat/fix/resto) e sem o prefixo técnico.
+      - name: Notas da versão
+        working-directory: .
+        run: |
+          PREV=$(git tag --list 'apk-*' --sort=-v:refname | head -n 1)
+
+          if [ -n "$PREV" ]; then
+            RANGE="$PREV..HEAD"
+          else
+            RANGE="-n 20"
+          fi
+
+          git log $RANGE --no-merges --pretty='%s|%h' -- mobile .github > commits.txt
+
+          awk -F'|' '
+            {
+              type = $1; sub(/[(:!].*/, "", type)
+              msg = $1;  sub(/^[a-z]+(\([^)]*\))?!?: */, "", msg)
+              line = "- " toupper(substr(msg, 1, 1)) substr(msg, 2) " (" $2 ")\n"
+              if (type == "feat") feat = feat line
+              else if (type == "fix") fix = fix line
+              else other = other line
+            }
+            END {
+              if (feat)  printf "### Novidades\n%s\n", feat
+              if (fix)   printf "### Correções\n%s\n", fix
+              if (other) printf "### Outras mudanças\n%s\n", other
+            }
+          ' commits.txt > notes.md
+
+          [ -s notes.md ] || echo "Sem mudanças no app desde a versão anterior." > notes.md
+
+          {
+            echo
+            echo "---"
+            echo "Baixe o **valorant-shop.apk** abaixo e instale: atualiza por cima da versão anterior, sem perder seus dados."
+          } >> notes.md
+
+          cat notes.md
+
       - name: Publicar Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: apk-${{ github.run_number }}
-          name: APK ${{ github.run_number }}
-          body: 'Build de ${{ github.sha }}. Baixe o valorant-shop.apk abaixo e instale no celular.'
+          name: Valorant Shop 1.0.${{ github.run_number }}
+          body_path: notes.md
           files: mobile/valorant-shop.apk
           make_latest: true
