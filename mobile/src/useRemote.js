@@ -31,6 +31,11 @@ export function useRemote(load) {
   );
 
   useEffect(() => {
+    // Fonte nova (outro filtro, outro idioma): não mostra os dados
+    // da anterior enquanto a nova carrega.
+    setData(null);
+    setError(null);
+
     run(false);
   }, [run]);
 

@@ -1,10 +1,21 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
+import { Image } from './Img';
+import { useI18n } from '../i18n';
 import { theme } from '../theme';
+import { useSkinPreview } from '../skinPreview';
+import { OwnedBadge } from './ShopSections';
 
-export function SkinCard({ skin }) {
+export function SkinCard({ skin, wishlisted }) {
+  const { t, lang } = useI18n();
+  const { openSkin } = useSkinPreview();
+
   return (
-    <View style={styles.card}>
+    <Pressable
+      onPress={() => openSkin(skin.id, { price: skin.price, owned: skin.owned })}
+      style={({ pressed }) => [styles.card, skin.owned && styles.ownedCard, pressed && styles.pressed]}
+    >
       <View style={styles.art}>
         {skin.image ? (
           <Image
@@ -13,20 +24,25 @@ export function SkinCard({ skin }) {
             resizeMode="contain"
           />
         ) : (
-          <Text style={styles.placeholder}>sem imagem</Text>
+          <Text style={styles.placeholder}>{t('shop.noImage')}</Text>
         )}
+
+        {skin.owned ? <OwnedBadge /> : null}
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.name} numberOfLines={1}>
-          {skin.name}
-        </Text>
+        <View style={styles.nameRow}>
+          <Text style={styles.name} numberOfLines={1}>
+            {skin.name || t('shop.unknownSkin')}
+          </Text>
+          {wishlisted ? <Ionicons name="heart" size={15} color={theme.accent} /> : null}
+        </View>
 
         <Text style={styles.price}>
-          {skin.price === null ? '--' : `${skin.price} VP`}
+          {skin.price == null ? '--' : `${skin.price.toLocaleString(lang)} VP`}
         </Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -37,6 +53,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.border,
     overflow: 'hidden',
+  },
+  pressed: {
+    opacity: 0.8,
+  },
+  ownedCard: {
+    borderColor: 'rgba(74,222,128,0.5)',
   },
   art: {
     height: 132,
@@ -60,6 +82,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+  },
   name: {
     color: theme.text,
     fontSize: 15,
@@ -68,8 +96,7 @@ const styles = StyleSheet.create({
   },
   price: {
     color: theme.accent,
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    fontSize: 17,
+    fontFamily: theme.fonts.display,
   },
 });

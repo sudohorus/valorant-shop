@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-import { AUTH_URL, parseAuthRedirect } from './riot';
+import { AUTH_URL, AUTH_URL_FORCE_LOGIN, parseAuthRedirect } from './riot';
 import { theme } from './theme';
 
 /**
@@ -12,7 +12,7 @@ import { theme } from './theme';
  * WebView ainda valem; se a Riot pedir login de novo, avisa o
  * pai por `onNeedsLogin` em vez de aparecer sozinho.
  */
-export function RiotLogin({ hidden = false, onTokens, onNeedsLogin }) {
+export function RiotLogin({ hidden = false, forceLogin = false, onTokens, onNeedsLogin }) {
   const done = useRef(false);
 
   function inspect(url) {
@@ -38,7 +38,7 @@ export function RiotLogin({ hidden = false, onTokens, onNeedsLogin }) {
   return (
     <View style={hidden ? styles.hidden : styles.visible}>
       <WebView
-        source={{ uri: AUTH_URL }}
+        source={{ uri: forceLogin ? AUTH_URL_FORCE_LOGIN : AUTH_URL }}
         sharedCookiesEnabled
         thirdPartyCookiesEnabled
         domStorageEnabled

@@ -1,6 +1,8 @@
 // Camada de acesso à Riot: sessão + chamadas cruas.
 // Cada tela monta seus dados em cima disto.
 
+import { t } from './i18n';
+
 export const AUTH_URL =
   'https://auth.riotgames.com/authorize' +
   '?redirect_uri=https%3A%2F%2Fplayvalorant.com%2Fopt_in' +
@@ -8,6 +10,11 @@ export const AUTH_URL =
   '&response_type=token%20id_token' +
   '&nonce=1' +
   '&scope=account%20openid';
+
+// Mesmo login, mas pedindo usuário e senha mesmo com sessão salva
+// (prompt=login do OpenID). Sem isso, "sair" reconectava na mesma
+// conta na hora e não dava para entrar com outra.
+export const AUTH_URL_FORCE_LOGIN = `${AUTH_URL}&prompt=login`;
 
 const ENTITLEMENTS_URL =
   'https://entitlements.auth.riotgames.com/api/token/v1';
@@ -64,7 +71,7 @@ function puuidFromToken(accessToken) {
   const payload = accessToken.split('.')[1];
 
   if (!payload) {
-    throw new Error('Access token não parece ser um JWT válido.');
+    throw new Error(t('errors.badToken'));
   }
 
   const normalized = payload
@@ -75,7 +82,7 @@ function puuidFromToken(accessToken) {
   const sub = JSON.parse(global.atob(normalized)).sub;
 
   if (!sub) {
-    throw new Error('Não encontrei PUUID no access token.');
+    throw new Error(t('errors.noPuuid'));
   }
 
   return sub;
@@ -107,22 +114,18 @@ async function readOrThrow(response, what) {
   }
 
   if (code === 'SCHEDULED_DOWNTIME') {
-    throw new RiotError(
-      'O VALORANT está em manutenção no seu servidor. ' +
-        'A loja volta quando a Riot religar os serviços.',
-      { code, status: response.status }
-    );
+    throw new RiotError(t('errors.downtime'), { code, status: response.status });
   }
 
   if (code === 'BAD_CLAIMS' || response.status === 401) {
-    throw new RiotError('Sua sessão expirou. Entre de novo.', {
+    throw new RiotError(t('errors.expired'), {
       code: 'EXPIRED',
       status: response.status,
     });
   }
 
   throw new RiotError(
-    `${what} falhou (HTTP ${response.status}).` +
+    t('errors.failed', { what: t(what), status: response.status }) +
       (body ? `\n${body.slice(0, 300)}` : ''),
     { code, status: response.status }
   );
@@ -145,10 +148,10 @@ export async function openSession({ accessToken, idToken }) {
       },
       body: '{}',
     })
-      .then((response) => readOrThrow(response, 'Entitlement'))
+      .then((response) => readOrThrow(response, 'what.entitlement'))
       .then((data) => {
         if (!data.entitlements_token) {
-          throw new RiotError('A Riot não retornou entitlements_token.');
+          throw new RiotError(t('errors.noEntitlement'));
         }
 
         return data.entitlements_token;
@@ -162,28 +165,26 @@ export async function openSession({ accessToken, idToken }) {
       },
       body: JSON.stringify({ id_token: idToken }),
     })
-      .then((response) => readOrThrow(response, 'Descoberta de região'))
+      .then((response) => readOrThrow(response, 'what.region'))
       .then((data) => {
         const region = data?.affinities?.live;
 
         const shard = SHARDS[region];
 
         if (!shard) {
-          throw new RiotError(
-            `Não sei qual shard usar para a região '${region}'.`
-          );
+          throw new RiotError(t('errors.unknownShard', { region }));
         }
 
         return shard;
       }),
 
     fetch(VERSION_URL)
-      .then((response) => readOrThrow(response, 'Versão do VALORANT'))
+      .then((response) => readOrThrow(response, 'what.version'))
       .then(({ data }) => {
         const version = data?.riotClientVersion || data?.clientVersion;
 
         if (!version) {
-          throw new RiotError('Não encontrei riotClientVersion.');
+          throw new RiotError(t('errors.noVersion'));
         }
 
         return version;
@@ -197,7 +198,8 @@ export async function openSession({ accessToken, idToken }) {
 export async function callGame(
   session,
   path,
-  { method = 'GET', body, what = 'A chamada' } = {}
+  // `what` é uma chave de tradução ('what.shop'...), usada na mensagem de erro.
+  { method = 'GET', body, what = 'what.call' } = {}
 ) {
   const response = await fetch(`https://pd.${session.shard}.a.pvp.net${path}`, {
     method,
@@ -215,3 +217,6 @@ export async function callGame(
 
   return readOrThrow(response, what);
 }
+
+/** ID da moeda Valorant Points no Cost das ofertas. */
+export const VP = '85ad13f7-3d1b-5128-9eb2-7cd8ee0b5741';

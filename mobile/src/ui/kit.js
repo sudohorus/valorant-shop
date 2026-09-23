@@ -78,9 +78,10 @@ const styles = StyleSheet.create({
   },
   title: {
     color: theme.text,
-    fontSize: 28,
-    fontWeight: '700',
-    letterSpacing: -0.5,
+    fontSize: 35,
+    fontFamily: theme.fonts.display,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   subtitle: {
     color: theme.textDim,
@@ -102,8 +103,8 @@ const styles = StyleSheet.create({
   },
   messageTitle: {
     color: theme.text,
-    fontSize: 19,
-    fontWeight: '700',
+    fontSize: 23,
+    fontFamily: theme.fonts.display,
   },
   button: {
     marginTop: 8,

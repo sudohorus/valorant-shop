@@ -8,4 +8,10 @@ export const theme = {
   accent: '#FF4655',
   radius: 16,
   gap: 16,
+  // Condensada pesada nos títulos e números grandes (cara de VALORANT).
+  // Com fontFamily própria, não usar fontWeight: o arquivo já é o peso.
+  fonts: {
+    display: 'BarlowCondensed_800ExtraBold',
+    displayMedium: 'BarlowCondensed_600SemiBold',
+  },
 };
