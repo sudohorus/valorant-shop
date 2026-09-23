@@ -1,0 +1,174 @@
+# Gera o IPA do app no GitHub, sem Mac e sem conta de desenvolvedor Apple.
+#
+# O IPA sai SEM ASSINATURA: a Apple não deixa instalar direto pelo
+# iPhone como o Android faz com o APK. Para pôr no aparelho use
+# AltStore ou Sideloadly com o seu Apple ID grátis (o app vale 7 dias
+# e o AltStore renova sozinho), ou TrollStore/aparelho com jailbreak.
+#
+# Para distribuir pela TestFlight é preciso conta paga da Apple
+# (US$ 99/ano) e assinar aqui com certificado + perfil de provisionamento.
+#
+# Atenção: runner macOS gasta 10x os minutos do plano do GitHub.
+# Por isso este workflow NÃO roda a cada push — só no botão
+# "Run workflow" da aba Actions.
+
+name: IPA iOS
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ios-ipa
+  cancel-in-progress: true
+
+permissions:
+  contents: write # criar a Release com o IPA
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 90
+
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: mobile/.nvmrc
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - run: npm ci
+
+      # Mesma numeração do APK, para as duas plataformas baterem.
+      - name: Versão do app
+        env:
+          RUN: ${{ github.run_number }}
+        run: |
+          node -e "
+            const fs = require('fs');
+            const config = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+            config.expo.version = '1.0.' + process.env.RUN;
+            config.expo.ios = { ...config.expo.ios, buildNumber: String(process.env.RUN) };
+            fs.writeFileSync('app.json', JSON.stringify(config, null, 2));
+          "
+
+      # Gera a pasta ios/ a partir do app.json (plugins inclusos).
+      - run: npx expo prebuild --platform ios --clean --no-install
+
+      # --no-install pula o CocoaPods junto com o npm; rodamos na mão.
+      - name: Instalar pods
+        working-directory: mobile/ios
+        run: pod install
+
+      # O nome do scheme vem do app.json, então descobrimos em vez de fixar.
+      - name: Descobrir workspace e scheme
+        id: xcode
+        working-directory: mobile/ios
+        run: |
+          WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
+          SCHEME=$(xcodebuild -list -json -workspace "$WORKSPACE" | node -e "
+            let input = '';
+            process.stdin.on('data', (chunk) => (input += chunk));
+            process.stdin.on('end', () => {
+              console.log(JSON.parse(input).workspace.schemes[0]);
+            });
+          ")
+
+          echo "workspace=$WORKSPACE" >> "$GITHUB_OUTPUT"
+          echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
+
+          echo "Workspace: $WORKSPACE / Scheme: $SCHEME"
+
+      # CODE_SIGNING_ALLOWED=NO é o que permite compilar sem certificado.
+      - name: Compilar
+        working-directory: mobile/ios
+        run: |
+          set -o pipefail
+
+          # xcbeautify vem na imagem do runner; se sumir, log cru serve.
+          PRETTY=$(command -v xcbeautify || command -v cat)
+
+          xcodebuild \
+            -workspace "${{ steps.xcode.outputs.workspace }}" \
+            -scheme "${{ steps.xcode.outputs.scheme }}" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            | "$PRETTY"
+
+      # Um IPA é só um zip com o .app dentro de uma pasta Payload/.
+      - name: Empacotar IPA
+        working-directory: mobile/ios
+        run: |
+          APP=$(ls -d build/Build/Products/Release-iphoneos/*.app | head -n 1)
+
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+
+          zip -qry ../valorant-shop.ipa Payload
+
+          ls -lh ../valorant-shop.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: valorant-shop-ipa
+          path: mobile/valorant-shop.ipa
+          retention-days: 30
+
+      - name: Notas da versão
+        working-directory: .
+        run: |
+          PREV=$(git tag --list 'ios-*' --sort=-v:refname | head -n 1)
+
+          if [ -n "$PREV" ]; then
+            RANGE="$PREV..HEAD"
+          else
+            RANGE="-n 20"
+          fi
+
+          git log $RANGE --no-merges --pretty='%s|%h' -- mobile .github > commits.txt
+
+          awk -F'|' '
+            {
+              type = $1; sub(/[(:!].*/, "", type)
+              msg = $1;  sub(/^[a-z]+(\([^)]*\))?!?: */, "", msg)
+              line = "- " toupper(substr(msg, 1, 1)) substr(msg, 2) " (" $2 ")\n"
+              if (type == "feat") feat = feat line
+              else if (type == "fix") fix = fix line
+              else other = other line
+            }
+            END {
+              if (feat)  printf "### Novidades\n%s\n", feat
+              if (fix)   printf "### Correções\n%s\n", fix
+              if (other) printf "### Outras mudanças\n%s\n", other
+            }
+          ' commits.txt > notes.md
+
+          [ -s notes.md ] || echo "Sem mudanças no app desde a versão anterior." > notes.md
+
+          {
+            echo
+            echo "---"
+            echo "O **valorant-shop.ipa** não está assinado. Instale com AltStore ou Sideloadly usando seu Apple ID."
+          } >> notes.md
+
+          cat notes.md
+
+      - name: Publicar Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-${{ github.run_number }}
+          name: Valorant Shop iOS 1.0.${{ github.run_number }}
+          body_path: notes.md
+          files: mobile/valorant-shop.ipa
+          make_latest: false
